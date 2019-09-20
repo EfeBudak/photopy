@@ -1,9 +1,17 @@
 package com.efebudak.photopy.di
 
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProviders
 import com.efebudak.photopy.BuildConfig
+import com.efebudak.photopy.PhotopyViewModelFactory
+import com.efebudak.photopy.data.source.PhotosDataSource
+import com.efebudak.photopy.data.source.PhotosRepository
+import com.efebudak.photopy.data.source.remote.PhotosRemoteDataSource
 import com.efebudak.photopy.network.FlickrService
+import com.efebudak.photopy.ui.main.MainViewModel
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -25,4 +33,22 @@ val appModule = module {
         (get() as Retrofit).create(FlickrService::class.java)
     }
 
+    single<PhotosDataSource>(named(LOCAL_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
+    single<PhotosDataSource>(named(REMOTE_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
+    single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
+        PhotosRepository(
+            get(named(LOCAL_DATA_SOURCE)),
+            get(named(REMOTE_DATA_SOURCE))
+        )
+    }
+
+    factory { (activity: AppCompatActivity) ->
+        ViewModelProviders.of(activity, PhotopyViewModelFactory(get(named(REPOSITORY_DATA_SOURCE))))
+            .get(MainViewModel::class.java)
+    }
+
 }
+
+private const val LOCAL_DATA_SOURCE = "localDataSource"
+private const val REMOTE_DATA_SOURCE = "remoteDataSource"
+private const val REPOSITORY_DATA_SOURCE = "repositoryDataSource"
