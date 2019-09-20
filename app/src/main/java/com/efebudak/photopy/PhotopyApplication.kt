@@ -6,7 +6,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 
-class PhotopyApplication:Application() {
+class PhotopyApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
@@ -16,5 +16,6 @@ class PhotopyApplication:Application() {
             androidContext(this@PhotopyApplication)
             modules(appModule)
         }
+
     }
 }
