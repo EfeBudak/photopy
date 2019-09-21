@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Photopy</string>
+    <string name="search_photo">Search Photo</string>
+    <string name="photo_title_placeholder">Cute Kitten</string>
 </resources>

@@ -1,4 +1,4 @@
-package com.efebudak.photopy.ui.main
+package com.efebudak.photopy.ui.search
 
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
@@ -6,13 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.efebudak.photopy.data.UiPhoto
 import com.efebudak.photopy.data.source.PhotosDataSource
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
-class MainViewModel(
+class SearchViewModel(
     private val photosDataSource: PhotosDataSource
-) : ViewModel(), MainContract.Presenter {
+) : ViewModel(), SearchContract.ViewModel {
 
     val uiPhotoMutableList: MutableLiveData<List<UiPhoto>> = MutableLiveData()
 
@@ -27,14 +28,16 @@ class MainViewModel(
             val a = measureTime {
                 val photoListResponse = photosDataSource.fetchPhotoList(searchText, atPage)
 
-                uiPhotoMutableList.value =
-                    photoListResponse.photos.photo.map { UiPhoto(it.id, it.title) }
+                uiPhotoMutableList.value = photoListResponse.photos.photo
+                    .map { UiPhoto(it.id, it.title) }
                 for (photo in photoListResponse.photos.photo) {
 
-                    val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
+                    val photoSizesResponse = async {
+                        photosDataSource.fetchPhotoSizes(photo.id)
+                    }
 
                     uiPhotoMutableList.value?.firstOrNull { it.id == photo.id }?.photoUrl =
-                        photoSizesResponse.photoSizes.photoSizeList
+                        photoSizesResponse.await().photoSizes.photoSizeList
                             .firstOrNull { it.label == "Large Square" }?.sourceUrl ?: ""
 
                 }

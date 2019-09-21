@@ -1,0 +1,59 @@
+package com.efebudak.photopy.ui.search
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.efebudak.photopy.R
+import com.efebudak.photopy.data.UiPhoto
+
+class SearchListAdapter(private var uiPhotoList: List<UiPhoto>) :
+    RecyclerView.Adapter<SearchListAdapter.SearchViewHolder>() {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchViewHolder {
+
+        val root = LayoutInflater.from(parent.context)
+            .inflate(R.layout.layout_search_result, parent, false)
+
+        return SearchViewHolder(root)
+    }
+
+    override fun getItemCount(): Int = uiPhotoList.size
+
+    override fun onBindViewHolder(holder: SearchViewHolder, position: Int) {
+
+        holder.bindView(uiPhotoList[position])
+    }
+
+    fun updateUiPhotoList(updatedUiPhotoList:List<UiPhoto>){
+
+        uiPhotoList = updatedUiPhotoList
+        notifyDataSetChanged()
+
+    }
+
+    class SearchViewHolder(root: View) : RecyclerView.ViewHolder(root) {
+
+        fun bindView(uiPhoto: UiPhoto) {
+
+            val imageViewPhoto = itemView.findViewById<ImageView>(R.id.imageViewPhoto)
+            val textViewTitle = itemView.findViewById<TextView>(R.id.textViewPhotoTitle)
+
+            Glide.with(itemView).run {
+                if (uiPhoto.photoUrl.isBlank()) {
+                    load(R.drawable.ic_photo_placeholder)
+                } else {
+                    load(uiPhoto.photoUrl)
+                        .placeholder(R.drawable.ic_photo_placeholder)
+                }
+                    .centerCrop()
+                    .into(imageViewPhoto)
+            }
+            textViewTitle.text = uiPhoto.title
+
+        }
+    }
+}

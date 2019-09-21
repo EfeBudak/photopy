@@ -15,7 +15,7 @@ interface FlickrService {
         @Query("api_key") apiKey: String = BuildConfig.API_KEY,
         @Query("format") format: String = "json",
         @Query("nojsoncallback") nojsoncallback: Int = 1
-        ):PhotoListResponse
+    ): PhotoListResponse
 
     @GET("?method=flickr.photos.getSizes")
     suspend fun getPhotoSizes(
@@ -23,7 +23,6 @@ interface FlickrService {
         @Query("api_key") apiKey: String = BuildConfig.API_KEY,
         @Query("format") format: String = "json",
         @Query("nojsoncallback") nojsoncallback: Int = 1
-        ):PhotoSizesResponse
-
+    ): PhotoSizesResponse
 
 }

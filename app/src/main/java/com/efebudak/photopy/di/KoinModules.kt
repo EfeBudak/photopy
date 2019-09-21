@@ -1,6 +1,6 @@
 package com.efebudak.photopy.di
 
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.efebudak.photopy.BuildConfig
 import com.efebudak.photopy.PhotopyViewModelFactory
@@ -8,7 +8,7 @@ import com.efebudak.photopy.data.source.PhotosDataSource
 import com.efebudak.photopy.data.source.PhotosRepository
 import com.efebudak.photopy.data.source.remote.PhotosRemoteDataSource
 import com.efebudak.photopy.network.FlickrService
-import com.efebudak.photopy.ui.main.MainViewModel
+import com.efebudak.photopy.ui.search.SearchViewModel
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.core.qualifier.named
@@ -42,9 +42,9 @@ val appModule = module {
         )
     }
 
-    factory { (activity: AppCompatActivity) ->
-        ViewModelProviders.of(activity, PhotopyViewModelFactory(get(named(REPOSITORY_DATA_SOURCE))))
-            .get(MainViewModel::class.java)
+    factory { (fragment: Fragment) ->
+        ViewModelProviders.of(fragment, PhotopyViewModelFactory(get(named(REPOSITORY_DATA_SOURCE))))
+            .get(SearchViewModel::class.java)
     }
 
 }
