@@ -2,12 +2,13 @@ package com.efebudak.photopy.ui.search
 
 interface SearchContract {
 
-    interface View{
+    interface View {
 
     }
 
-    interface ViewModel{
-        fun searchClicked(searchText:String)
+    interface ViewModel {
+        fun searchClicked(searchText: String)
+        fun lastVisibleItemPosition(position: Int)
     }
 
 }

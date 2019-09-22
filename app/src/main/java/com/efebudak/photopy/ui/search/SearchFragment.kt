@@ -11,19 +11,18 @@ import androidx.lifecycle.observe
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.efebudak.photopy.R
+import com.efebudak.photopy.data.UiPhoto
 import kotlinx.android.synthetic.main.fragment_search.view.*
 import org.koin.android.ext.android.inject
 import org.koin.core.parameter.parametersOf
-import kotlin.time.ExperimentalTime
 
 class SearchFragment : Fragment() {
 
     private val viewModel: SearchViewModel by inject { parametersOf(this) }
 
     private lateinit var viewAdapter: SearchListAdapter
-    private lateinit var viewManager: RecyclerView.LayoutManager
+    private lateinit var viewManager: GridLayoutManager
 
-    @ExperimentalTime
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -32,24 +31,24 @@ class SearchFragment : Fragment() {
 
         val root = inflater.inflate(R.layout.fragment_search, container, false)
 
-        viewModel.uiPhotoMutableList.observe(this) {
 
-            Log.d("uiPhotoMutableList", "Size ${it.size}")
-
-            viewAdapter.updateUiPhotoList(it)
-        }
-
-
-
-        viewAdapter = SearchListAdapter(emptyList())
+        viewAdapter = SearchListAdapter()
         viewManager = GridLayoutManager(context, 2)
 
         root.recyclerViewSearchResults.let {
             it.adapter = viewAdapter
             it.layoutManager = viewManager
+
+            it.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+
+                    viewModel.lastVisibleItemPosition(viewManager.findLastVisibleItemPosition())
+                }
+            })
         }
 
-        root.editTextSearch.setOnEditorActionListener { textView, actionId, event ->
+        root.editTextSearch.setOnEditorActionListener { textView, actionId, _ ->
             return@setOnEditorActionListener if (actionId == EditorInfo.IME_ACTION_SEARCH) {
 
                 viewModel.searchClicked(textView.text.toString())
@@ -60,6 +59,19 @@ class SearchFragment : Fragment() {
         }
 
         return root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        viewModel.uiPhotoList.observe(viewLifecycleOwner) {
+
+            Log.d("uiPhotoList", "Size ${it.size}")
+
+            val newList = mutableListOf<UiPhoto>()
+            it.forEach { uiPhotoItem -> newList.add(UiPhoto(uiPhotoItem)) }
+            viewAdapter.submitList(newList)
+        }
     }
 
 }
