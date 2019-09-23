@@ -8,6 +8,7 @@ import com.efebudak.photopy.data.PhotoListResponse
 import com.efebudak.photopy.data.PhotosPage
 import com.efebudak.photopy.data.UiPhoto
 import com.efebudak.photopy.data.source.PhotosDataSource
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
@@ -39,6 +40,8 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
     private var biggestRequestedItemIndex = 0
     private var atPage = 1
     private var lastFetchedItemIndex = 0
+    private var searchedText = ""
+    private var photoUrlJob: Job? = null
 
     /**
      * Search limits
@@ -49,13 +52,15 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     override fun searchClicked(searchText: String) {
 
+        searchedText = searchText
         if (fetchingSearch) return
         fetchingSearch = true
+        photoUrlJob?.cancel()
         _searchLoading.value = true
 
         initSearchState()
 
-        val job = viewModelScope.launch {
+        viewModelScope.launch {
 
             val photoListResponse = try {
                 photosDataSource.fetchPhotoList(searchText, atPage)
@@ -93,10 +98,11 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         fetchingPhotoUrl = true
 
         if (biggestRequestedItemIndex > lastFetchedItemIndex) {
-            viewModelScope.launch {
+            photoUrlJob = viewModelScope.launch {
 
                 while (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN) {
 
+                    yield()
                     val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
 
                     val newPhotoUrl = try {
