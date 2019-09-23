@@ -47,7 +47,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
      * Search limits
      */
     private var totalNumberOfPages = 0
-    private var currentPhotoNumber = 0
+    private var currentTotalPhotoNumber = 0
     private var totalNumberOfPhotos = 0
 
     override fun searchClicked(searchText: String) {
@@ -56,6 +56,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         if (fetchingSearch) return
         fetchingSearch = true
         photoUrlJob?.cancel()
+        fetchingPhotoUrl = false
         _searchLoading.value = true
 
         initSearchState()
@@ -97,34 +98,13 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         if (fetchingPhotoUrl) return
         fetchingPhotoUrl = true
 
-        if (biggestRequestedItemIndex > lastFetchedItemIndex) {
-            photoUrlJob = viewModelScope.launch {
-
-                while (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN) {
-
-                    yield()
-                    val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
-
-                    val newPhotoUrl = try {
-                        val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
-                        photoSizesResponse.photoSizes.photoSizeList
-                            .firstOrNull { it.label == "Large Square" }?.sourceUrl ?: ""
-                    } catch (error: HttpException) {
-                        //Display error message
-                        ""
-                    }
-
-                    lastFetchedItemIndex++
-
-                    updateListWithNewItem(photo.id, newPhotoUrl)
-
-                    _uiPhotoMutableList.postValue(_uiPhotoMutableList.value)
-                }
-                fetchingPhotoUrl = false
+        photoUrlJob = viewModelScope.launch {
+            if (biggestRequestedItemIndex > lastFetchedItemIndex) {
+                fetchRequestedItemUrls()
             }
-        } else {
             fetchingPhotoUrl = false
         }
+
     }
 
     private fun initSearchState() {
@@ -135,11 +115,34 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     private fun setLimits(photoListResponse: PhotoListResponse) {
         totalNumberOfPages = photoListResponse.photos.pages
-        currentPhotoNumber = photoListResponse.photos.photo.size
+        currentTotalPhotoNumber = photoListResponse.photos.photo.size
         totalNumberOfPhotos = try {
             photoListResponse.photos.total.toInt()
         } catch (numberFormatException: NumberFormatException) {
             0
+        }
+    }
+
+    private suspend fun fetchRequestedItemUrls() {
+
+        while (hasItemsToLoad()) {
+
+            yield()
+            val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
+
+            val newPhotoUrl = try {
+                val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
+                photoSizesResponse.photoSizes.photoSizeList
+                    .firstOrNull { it.label == "Large Square" }?.sourceUrl ?: ""
+            } catch (error: HttpException) {
+                //Display error message
+                ""
+            }
+
+            lastFetchedItemIndex++
+
+            updateListWithNewItem(photo.id, newPhotoUrl)
+            _uiPhotoMutableList.postValue(_uiPhotoMutableList.value)
         }
     }
 
@@ -154,5 +157,9 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
             }
         }
     }
+
+    private fun hasItemsToLoad() =
+        (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN)
+                && lastFetchedItemIndex < currentTotalPhotoNumber
 
 }

@@ -30,17 +30,17 @@ class SearchListAdapter :
             val imageViewPhoto = itemView.findViewById<ImageView>(R.id.imageViewPhoto)
             val textViewTitle = itemView.findViewById<TextView>(R.id.textViewPhotoTitle)
 
-            Picasso.with(itemView.context).run {
-                if (uiPhoto.photoUrl.isBlank()) {
-                    load(R.drawable.ic_photo_placeholder)
-                } else {
-                    load(uiPhoto.photoUrl)
-                        .placeholder(R.drawable.ic_photo_placeholder)
-                }
+            if (uiPhoto.photoUrl.isBlank()) {
+                imageViewPhoto.setImageResource(R.drawable.ic_face_black_24dp)
+            } else {
+                Picasso.with(itemView.context)
+                    .load(uiPhoto.photoUrl)
+                    .placeholder(R.drawable.ic_photo_placeholder)
                     .resize(150, 150)
                     .centerCrop()
                     .into(imageViewPhoto)
             }
+
             textViewTitle.text = uiPhoto.title
 
         }
