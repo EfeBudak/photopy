@@ -1,7 +1,6 @@
 package com.efebudak.photopy.ui.search
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +11,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.efebudak.photopy.R
 import com.efebudak.photopy.data.UiPhoto
+import kotlinx.android.synthetic.main.fragment_search.*
 import kotlinx.android.synthetic.main.fragment_search.view.*
 import org.koin.android.ext.android.inject
 import org.koin.core.parameter.parametersOf
@@ -66,11 +66,20 @@ class SearchFragment : Fragment() {
 
         viewModel.uiPhotoList.observe(viewLifecycleOwner) {
 
-            Log.d("uiPhotoList", "Size ${it.size}")
-
             val newList = mutableListOf<UiPhoto>()
             it.forEach { uiPhotoItem -> newList.add(UiPhoto(uiPhotoItem)) }
             viewAdapter.submitList(newList)
+        }
+
+        viewModel.searchLoading.observe(viewLifecycleOwner) {
+
+            if (it) {
+                progressBarLoading.visibility = View.VISIBLE
+                recyclerViewSearchResults.visibility = View.GONE
+            } else {
+                progressBarLoading.visibility = View.GONE
+                recyclerViewSearchResults.visibility = View.VISIBLE
+            }
         }
     }
 

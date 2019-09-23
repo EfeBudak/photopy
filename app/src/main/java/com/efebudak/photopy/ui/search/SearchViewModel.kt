@@ -4,36 +4,73 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.efebudak.photopy.data.PhotoListResponse
+import com.efebudak.photopy.data.PhotosPage
 import com.efebudak.photopy.data.UiPhoto
 import com.efebudak.photopy.data.source.PhotosDataSource
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
+import retrofit2.HttpException
 
-class SearchViewModel(
-    private val photosDataSource: PhotosDataSource
-) : ViewModel(), SearchContract.ViewModel {
+private const val PHOTO_INDEX_MARGIN = 10
 
-    private val _uiPhotoMutableList: MutableLiveData<MutableList<UiPhoto>> = MutableLiveData()
+class SearchViewModel(private val photosDataSource: PhotosDataSource) :
+    ViewModel(),
+    SearchContract.ViewModel {
 
     val uiPhotoList: LiveData<MutableList<UiPhoto>>
-        get() {
-            return _uiPhotoMutableList
-        }
+        get() = _uiPhotoMutableList
+    val searchLoading: LiveData<Boolean>
+        get() = _searchLoading
 
+    private val _uiPhotoMutableList: MutableLiveData<MutableList<UiPhoto>> = MutableLiveData()
+    private val _searchLoading: MutableLiveData<Boolean> = MutableLiveData()
+
+    /**
+     * fetching lockers
+     */
     private var fetchingSearch = false
     private var fetchingPhotoUrl = false
 
+    /**
+     * Search states
+     */
     private var biggestRequestedItemIndex = 0
     private var atPage = 1
-    private var lastVisibleItem = 0
+    private var lastFetchedItemIndex = 0
+
+    /**
+     * Search limits
+     */
+    private var totalNumberOfPages = 0
+    private var currentPhotoNumber = 0
+    private var totalNumberOfPhotos = 0
 
     override fun searchClicked(searchText: String) {
 
         if (fetchingSearch) return
         fetchingSearch = true
-        lastVisibleItem = 0
-        viewModelScope.launch {
+        _searchLoading.value = true
 
-            val photoListResponse = photosDataSource.fetchPhotoList(searchText, atPage)
+        initSearchState()
+
+        val job = viewModelScope.launch {
+
+            val photoListResponse = try {
+                photosDataSource.fetchPhotoList(searchText, atPage)
+            } catch (error: HttpException) {
+
+                //Display error message
+                fetchingSearch = false
+                _searchLoading.value = false
+                cancel()
+                PhotoListResponse(PhotosPage())
+            }
+
+            yield()
+
+            setLimits(photoListResponse)
 
             _uiPhotoMutableList.postValue(photoListResponse.photos.photo.map {
                 UiPhoto(
@@ -43,31 +80,35 @@ class SearchViewModel(
             }.toMutableList())
 
             fetchingSearch = false
+            _searchLoading.value = false
         }
     }
 
     override fun lastVisibleItemPosition(position: Int) {
 
-        val photoList = uiPhotoList.value?.let { it } ?: return
         if (biggestRequestedItemIndex < position) {
             biggestRequestedItemIndex = position
         }
         if (fetchingPhotoUrl) return
         fetchingPhotoUrl = true
 
-//todo add pagination check list size
-        if (biggestRequestedItemIndex > lastVisibleItem) {
+        if (biggestRequestedItemIndex > lastFetchedItemIndex) {
             viewModelScope.launch {
 
-                for (index in lastVisibleItem..biggestRequestedItemIndex + 6) {
+                while (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN) {
 
-                    val photo = uiPhotoList.value?.get(index) ?: continue
+                    val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
 
-                    val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
+                    val newPhotoUrl = try {
+                        val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
+                        photoSizesResponse.photoSizes.photoSizeList
+                            .firstOrNull { it.label == "Large Square" }?.sourceUrl ?: ""
+                    } catch (error: HttpException) {
+                        //Display error message
+                        ""
+                    }
 
-                    lastVisibleItem = index
-                    val newPhotoUrl = photoSizesResponse.photoSizes.photoSizeList
-                        .firstOrNull { it.label == "Large Square" }?.sourceUrl ?: ""
+                    lastFetchedItemIndex++
 
                     updateListWithNewItem(photo.id, newPhotoUrl)
 
@@ -77,6 +118,22 @@ class SearchViewModel(
             }
         } else {
             fetchingPhotoUrl = false
+        }
+    }
+
+    private fun initSearchState() {
+        biggestRequestedItemIndex = 0
+        atPage = 1
+        lastFetchedItemIndex = 0
+    }
+
+    private fun setLimits(photoListResponse: PhotoListResponse) {
+        totalNumberOfPages = photoListResponse.photos.pages
+        currentPhotoNumber = photoListResponse.photos.photo.size
+        totalNumberOfPhotos = try {
+            photoListResponse.photos.total.toInt()
+        } catch (numberFormatException: NumberFormatException) {
+            0
         }
     }
 
