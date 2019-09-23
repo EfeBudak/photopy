@@ -38,7 +38,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
      * Search states
      */
     private var biggestRequestedItemIndex = 0
-    private var atPage = 1
+    private var atPage = 0
     private var lastFetchedItemIndex = 0
     private var searchedText = ""
     private var photoUrlJob: Job? = null
@@ -52,42 +52,17 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     override fun searchClicked(searchText: String) {
 
-        searchedText = searchText
         if (fetchingSearch) return
         fetchingSearch = true
+        searchedText = searchText
         photoUrlJob?.cancel()
         fetchingPhotoUrl = false
         _searchLoading.value = true
 
         initSearchState()
 
-        viewModelScope.launch {
+        fetchNextPage()
 
-            val photoListResponse = try {
-                photosDataSource.fetchPhotoList(searchText, atPage)
-            } catch (error: HttpException) {
-
-                //Display error message
-                fetchingSearch = false
-                _searchLoading.value = false
-                cancel()
-                PhotoListResponse(PhotosPage())
-            }
-
-            yield()
-
-            setLimits(photoListResponse)
-
-            _uiPhotoMutableList.postValue(photoListResponse.photos.photo.map {
-                UiPhoto(
-                    it.id,
-                    it.title
-                )
-            }.toMutableList())
-
-            fetchingSearch = false
-            _searchLoading.value = false
-        }
     }
 
     override fun lastVisibleItemPosition(position: Int) {
@@ -95,6 +70,13 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         if (biggestRequestedItemIndex < position) {
             biggestRequestedItemIndex = position
         }
+
+        if (reachedTheEnd() && hasMorePagesToLoad()) {
+            if (fetchingSearch) return
+            fetchingSearch = true
+            fetchNextPage()
+        }
+
         if (fetchingPhotoUrl) return
         fetchingPhotoUrl = true
 
@@ -109,23 +91,13 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     private fun initSearchState() {
         biggestRequestedItemIndex = 0
-        atPage = 1
+        atPage = 0
         lastFetchedItemIndex = 0
-    }
-
-    private fun setLimits(photoListResponse: PhotoListResponse) {
-        totalNumberOfPages = photoListResponse.photos.pages
-        currentTotalPhotoNumber = photoListResponse.photos.photo.size
-        totalNumberOfPhotos = try {
-            photoListResponse.photos.total.toInt()
-        } catch (numberFormatException: NumberFormatException) {
-            0
-        }
     }
 
     private suspend fun fetchRequestedItemUrls() {
 
-        while (hasItemsToLoad()) {
+        while (hasMoreItemsToLoad()) {
 
             yield()
             val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
@@ -158,8 +130,66 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         }
     }
 
-    private fun hasItemsToLoad() =
+    private fun fetchNextPage() {
+
+        atPage++
+
+        viewModelScope.launch {
+
+            val photoListResponse = try {
+                photosDataSource.fetchPhotoList(searchedText, atPage)
+            } catch (error: HttpException) {
+
+                //Display error message
+                fetchingSearch = false
+                _searchLoading.value = false
+                cancel()
+                PhotoListResponse(PhotosPage())
+            }
+
+            yield()
+
+            val fetchedPhotoList = photoListResponse.photos.photo.map {
+                UiPhoto(
+                    it.id,
+                    it.title
+                )
+            }.toMutableList()
+            val newPhotoList = if (atPage > 1) {
+                val tempList = mutableListOf<UiPhoto>()
+                tempList.addAll(_uiPhotoMutableList.value ?: emptyList())
+                tempList.addAll(fetchedPhotoList)
+                tempList
+            } else {
+                fetchedPhotoList
+            }
+
+            setLimits(photoListResponse, newPhotoList.size)
+
+            _uiPhotoMutableList.postValue(newPhotoList.toMutableList())
+
+            fetchingSearch = false
+            _searchLoading.value = false
+        }
+    }
+
+    private fun setLimits(photoListResponse: PhotoListResponse, currentTotal: Int) {
+        totalNumberOfPages = photoListResponse.photos.pages
+        currentTotalPhotoNumber = currentTotal
+        totalNumberOfPhotos = try {
+            photoListResponse.photos.total.toInt()
+        } catch (numberFormatException: NumberFormatException) {
+            0
+        }
+    }
+
+    private fun hasMoreItemsToLoad() =
         (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN)
                 && lastFetchedItemIndex < currentTotalPhotoNumber
+
+    private fun reachedTheEnd() =
+        biggestRequestedItemIndex + PHOTO_INDEX_MARGIN >= currentTotalPhotoNumber
+
+    private fun hasMorePagesToLoad() = atPage < totalNumberOfPages
 
 }

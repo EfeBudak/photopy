@@ -51,6 +51,7 @@ class SearchFragment : Fragment() {
         root.editTextSearch.setOnEditorActionListener { textView, actionId, _ ->
             return@setOnEditorActionListener if (actionId == EditorInfo.IME_ACTION_SEARCH) {
 
+                recyclerViewSearchResults.scrollToPosition(0)
                 viewModel.searchClicked(textView.text.toString())
                 true
             } else {
