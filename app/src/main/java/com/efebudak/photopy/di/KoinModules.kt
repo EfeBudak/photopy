@@ -33,13 +33,9 @@ val appModule = module {
         (get() as Retrofit).create(FlickrService::class.java)
     }
 
-    single<PhotosDataSource>(named(LOCAL_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
     single<PhotosDataSource>(named(REMOTE_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
     single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
-        PhotosRepository(
-            get(named(LOCAL_DATA_SOURCE)),
-            get(named(REMOTE_DATA_SOURCE))
-        )
+        PhotosRepository(get(named(REMOTE_DATA_SOURCE)))
     }
 
     factory { (fragment: Fragment) ->

@@ -15,6 +15,7 @@ import kotlinx.coroutines.yield
 import retrofit2.HttpException
 
 private const val PHOTO_INDEX_MARGIN = 10
+private const val FIRST_PAGE_INDEX = 1
 
 class SearchViewModel(private val photosDataSource: PhotosDataSource) :
     ViewModel(),
@@ -67,9 +68,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     override fun lastVisibleItemPosition(position: Int) {
 
-        if (biggestRequestedItemIndex < position) {
-            biggestRequestedItemIndex = position
-        }
+        updateBiggestRequestedItemIndex(position)
 
         if (reachedTheEnd() && hasMorePagesToLoad()) {
             if (fetchingSearch) return
@@ -93,6 +92,12 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         biggestRequestedItemIndex = 0
         atPage = 0
         lastFetchedItemIndex = 0
+    }
+
+    private fun updateBiggestRequestedItemIndex(position: Int) {
+        if (biggestRequestedItemIndex < position) {
+            biggestRequestedItemIndex = position
+        }
     }
 
     private suspend fun fetchRequestedItemUrls() {
@@ -145,21 +150,29 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
                 _searchLoading.value = false
                 cancel()
                 PhotoListResponse(PhotosPage())
+            } catch (exception: Exception) {
+                //Display error message
+                fetchingSearch = false
+                _searchLoading.value = false
+                cancel()
+                PhotoListResponse(PhotosPage())
             }
 
             yield()
 
+            // To get the cached page
+            atPage = photoListResponse.photos.page
             val fetchedPhotoList = photoListResponse.photos.photo.map {
                 UiPhoto(
                     it.id,
                     it.title
                 )
             }.toMutableList()
-            val newPhotoList = if (atPage > 1) {
-                val tempList = mutableListOf<UiPhoto>()
-                tempList.addAll(_uiPhotoMutableList.value ?: emptyList())
-                tempList.addAll(fetchedPhotoList)
-                tempList
+            val newPhotoList = if (atPage > FIRST_PAGE_INDEX) {
+                val mergerList = mutableListOf<UiPhoto>()
+                mergerList.addAll(_uiPhotoMutableList.value ?: emptyList())
+                mergerList.addAll(fetchedPhotoList)
+                mergerList
             } else {
                 fetchedPhotoList
             }
@@ -167,6 +180,8 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
             setLimits(photoListResponse, newPhotoList.size)
 
             _uiPhotoMutableList.postValue(newPhotoList.toMutableList())
+
+            updateLastVisibleItemPosition()
 
             fetchingSearch = false
             _searchLoading.value = false
@@ -180,6 +195,15 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
             photoListResponse.photos.total.toInt()
         } catch (numberFormatException: NumberFormatException) {
             0
+        }
+    }
+
+    private fun updateLastVisibleItemPosition() {
+
+        if (atPage == FIRST_PAGE_INDEX) {
+            lastVisibleItemPosition(1)
+        } else {
+            lastVisibleItemPosition(biggestRequestedItemIndex)
         }
     }
 
