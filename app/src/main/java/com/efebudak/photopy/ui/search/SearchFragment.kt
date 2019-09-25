@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.observe
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.efebudak.photopy.R
@@ -32,7 +34,13 @@ class SearchFragment : Fragment() {
         val root = inflater.inflate(R.layout.fragment_search, container, false)
 
 
-        viewAdapter = SearchListAdapter()
+        viewAdapter = SearchListAdapter {
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                val directionToDetail =
+                    SearchFragmentDirections.actionSearchFragmentToDetailFragment(it)
+                findNavController().navigate(directionToDetail)
+            }
+        }
         viewManager = GridLayoutManager(context, 2)
 
         root.recyclerViewSearchResults.let {
