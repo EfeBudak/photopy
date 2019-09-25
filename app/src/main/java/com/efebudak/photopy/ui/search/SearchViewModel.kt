@@ -8,7 +8,7 @@ import com.efebudak.photopy.data.PhotoListResponse
 import com.efebudak.photopy.data.PhotosPage
 import com.efebudak.photopy.data.UiPhoto
 import com.efebudak.photopy.data.source.PhotosDataSource
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
@@ -17,7 +17,10 @@ import retrofit2.HttpException
 private const val PHOTO_INDEX_MARGIN = 10
 private const val FIRST_PAGE_INDEX = 1
 
-class SearchViewModel(private val photosDataSource: PhotosDataSource) :
+class SearchViewModel(
+    private val photosDataSource: PhotosDataSource,
+    private var stateHolder: SearchContract.StateHolder
+) :
     ViewModel(),
     SearchContract.ViewModel {
 
@@ -29,35 +32,13 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
     private val _uiPhotoMutableList: MutableLiveData<MutableList<UiPhoto>> = MutableLiveData()
     private val _searchLoading: MutableLiveData<Boolean> = MutableLiveData()
 
-    /**
-     * fetching lockers
-     */
-    private var fetchingSearch = false
-    private var fetchingPhotoUrl = false
-
-    /**
-     * Search states
-     */
-    private var biggestRequestedItemIndex = 0
-    private var atPage = 0
-    private var lastFetchedItemIndex = 0
-    private var searchedText = ""
-    private var photoUrlJob: Job? = null
-
-    /**
-     * Search limits
-     */
-    private var totalNumberOfPages = 0
-    private var currentTotalPhotoNumber = 0
-    private var totalNumberOfPhotos = 0
-
     override fun searchClicked(searchText: String) {
 
-        if (fetchingSearch) return
-        fetchingSearch = true
-        searchedText = searchText
-        photoUrlJob?.cancel()
-        fetchingPhotoUrl = false
+        if (stateHolder.fetchingSearch) return
+        stateHolder.fetchingSearch = true
+        stateHolder.searchedText = searchText
+        stateHolder.photoUrlJob?.cancel()
+        stateHolder.fetchingPhotoUrl = false
         _searchLoading.value = true
 
         initSearchState()
@@ -71,32 +52,32 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         updateBiggestRequestedItemIndex(position)
 
         if (reachedTheEnd() && hasMorePagesToLoad()) {
-            if (fetchingSearch) return
-            fetchingSearch = true
+            if (stateHolder.fetchingSearch) return
+            stateHolder.fetchingSearch = true
             fetchNextPage()
         }
 
-        if (fetchingPhotoUrl) return
-        fetchingPhotoUrl = true
+        if (stateHolder.fetchingPhotoUrl) return
+        stateHolder.fetchingPhotoUrl = true
 
-        photoUrlJob = viewModelScope.launch {
-            if (biggestRequestedItemIndex > lastFetchedItemIndex) {
+        stateHolder.photoUrlJob = viewModelScope.launch {
+            if (stateHolder.biggestRequestedItemIndex > stateHolder.lastFetchedItemIndex) {
                 fetchRequestedItemUrls()
             }
-            fetchingPhotoUrl = false
+            stateHolder.fetchingPhotoUrl = false
         }
 
     }
 
     private fun initSearchState() {
-        biggestRequestedItemIndex = 0
-        atPage = 0
-        lastFetchedItemIndex = 0
+        stateHolder.biggestRequestedItemIndex = 0
+        stateHolder.atPage = 0
+        stateHolder.lastFetchedItemIndex = 0
     }
 
     private fun updateBiggestRequestedItemIndex(position: Int) {
-        if (biggestRequestedItemIndex < position) {
-            biggestRequestedItemIndex = position
+        if (stateHolder.biggestRequestedItemIndex < position) {
+            stateHolder.biggestRequestedItemIndex = position
         }
     }
 
@@ -105,7 +86,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
         while (hasMoreItemsToLoad()) {
 
             yield()
-            val photo = uiPhotoList.value?.get(lastFetchedItemIndex) ?: continue
+            val photo = uiPhotoList.value?.get(stateHolder.lastFetchedItemIndex) ?: continue
 
             val newPhotoUrl = try {
                 val photoSizesResponse = photosDataSource.fetchPhotoSizes(photo.id)
@@ -116,7 +97,7 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
                 ""
             }
 
-            lastFetchedItemIndex++
+            stateHolder.lastFetchedItemIndex++
 
             updateListWithNewItem(photo.id, newPhotoUrl)
             _uiPhotoMutableList.postValue(_uiPhotoMutableList.value)
@@ -137,22 +118,27 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     private fun fetchNextPage() {
 
-        atPage++
+        stateHolder.atPage++
 
         viewModelScope.launch {
 
+            val deferedPhotoListResponse = async {
+
+                photosDataSource.fetchPhotoList(stateHolder.searchedText, stateHolder.atPage)
+            }
+
             val photoListResponse = try {
-                photosDataSource.fetchPhotoList(searchedText, atPage)
+                deferedPhotoListResponse.await()
             } catch (error: HttpException) {
 
                 //Display error message
-                fetchingSearch = false
+                stateHolder.fetchingSearch = false
                 _searchLoading.value = false
                 cancel()
                 PhotoListResponse(PhotosPage())
             } catch (exception: Exception) {
                 //Display error message
-                fetchingSearch = false
+                stateHolder.fetchingSearch = false
                 _searchLoading.value = false
                 cancel()
                 PhotoListResponse(PhotosPage())
@@ -161,14 +147,14 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
             yield()
 
             // To get the cached page
-            atPage = photoListResponse.photos.page
+            stateHolder.atPage = photoListResponse.photos.page
             val fetchedPhotoList = photoListResponse.photos.photo.map {
                 UiPhoto(
                     it.id,
                     it.title
                 )
             }.toMutableList()
-            val newPhotoList = if (atPage > FIRST_PAGE_INDEX) {
+            val newPhotoList = if (stateHolder.atPage > FIRST_PAGE_INDEX) {
                 val mergerList = mutableListOf<UiPhoto>()
                 mergerList.addAll(_uiPhotoMutableList.value ?: emptyList())
                 mergerList.addAll(fetchedPhotoList)
@@ -183,15 +169,15 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
             updateLastVisibleItemPosition()
 
-            fetchingSearch = false
+            stateHolder.fetchingSearch = false
             _searchLoading.value = false
         }
     }
 
     private fun setLimits(photoListResponse: PhotoListResponse, currentTotal: Int) {
-        totalNumberOfPages = photoListResponse.photos.pages
-        currentTotalPhotoNumber = currentTotal
-        totalNumberOfPhotos = try {
+        stateHolder.totalNumberOfPages = photoListResponse.photos.pages
+        stateHolder.currentTotalPhotoNumber = currentTotal
+        stateHolder.totalNumberOfPhotos = try {
             photoListResponse.photos.total.toInt()
         } catch (numberFormatException: NumberFormatException) {
             0
@@ -200,20 +186,20 @@ class SearchViewModel(private val photosDataSource: PhotosDataSource) :
 
     private fun updateLastVisibleItemPosition() {
 
-        if (atPage == FIRST_PAGE_INDEX) {
+        if (stateHolder.atPage == FIRST_PAGE_INDEX) {
             lastVisibleItemPosition(1)
         } else {
-            lastVisibleItemPosition(biggestRequestedItemIndex)
+            lastVisibleItemPosition(stateHolder.biggestRequestedItemIndex)
         }
     }
 
     private fun hasMoreItemsToLoad() =
-        (lastFetchedItemIndex < biggestRequestedItemIndex + PHOTO_INDEX_MARGIN)
-                && lastFetchedItemIndex < currentTotalPhotoNumber
+        (stateHolder.lastFetchedItemIndex < stateHolder.biggestRequestedItemIndex + PHOTO_INDEX_MARGIN)
+                && stateHolder.lastFetchedItemIndex < stateHolder.currentTotalPhotoNumber
 
     private fun reachedTheEnd() =
-        biggestRequestedItemIndex + PHOTO_INDEX_MARGIN >= currentTotalPhotoNumber
+        stateHolder.biggestRequestedItemIndex + PHOTO_INDEX_MARGIN >= stateHolder.currentTotalPhotoNumber
 
-    private fun hasMorePagesToLoad() = atPage < totalNumberOfPages
+    private fun hasMorePagesToLoad() = stateHolder.atPage < stateHolder.totalNumberOfPages
 
 }

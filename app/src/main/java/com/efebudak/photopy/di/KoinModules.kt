@@ -8,6 +8,8 @@ import com.efebudak.photopy.data.source.PhotosDataSource
 import com.efebudak.photopy.data.source.PhotosRepository
 import com.efebudak.photopy.data.source.remote.PhotosRemoteDataSource
 import com.efebudak.photopy.network.FlickrService
+import com.efebudak.photopy.ui.search.SearchContract
+import com.efebudak.photopy.ui.search.SearchStateHolder
 import com.efebudak.photopy.ui.search.SearchViewModel
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -37,14 +39,20 @@ val appModule = module {
     single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
         PhotosRepository(get(named(REMOTE_DATA_SOURCE)))
     }
+    factory<SearchContract.StateHolder> { SearchStateHolder() }
 
     factory { (fragment: Fragment) ->
-        ViewModelProviders.of(fragment, PhotopyViewModelFactory(get(named(REPOSITORY_DATA_SOURCE))))
+        ViewModelProviders.of(
+            fragment,
+            PhotopyViewModelFactory(
+                get(named(REPOSITORY_DATA_SOURCE)),
+                get()
+            )
+        )
             .get(SearchViewModel::class.java)
     }
 
 }
 
-private const val LOCAL_DATA_SOURCE = "localDataSource"
 private const val REMOTE_DATA_SOURCE = "remoteDataSource"
 private const val REPOSITORY_DATA_SOURCE = "repositoryDataSource"

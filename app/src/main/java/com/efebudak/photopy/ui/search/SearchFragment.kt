@@ -18,6 +18,8 @@ import kotlinx.android.synthetic.main.fragment_search.view.*
 import org.koin.android.ext.android.inject
 import org.koin.core.parameter.parametersOf
 
+private const val NUMBER_OF_COLUMNS = 2
+
 class SearchFragment : Fragment() {
 
     private val viewModel: SearchViewModel by inject { parametersOf(this) }
@@ -33,7 +35,6 @@ class SearchFragment : Fragment() {
 
         val root = inflater.inflate(R.layout.fragment_search, container, false)
 
-
         viewAdapter = SearchListAdapter {
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 val directionToDetail =
@@ -41,7 +42,7 @@ class SearchFragment : Fragment() {
                 findNavController().navigate(directionToDetail)
             }
         }
-        viewManager = GridLayoutManager(context, 2)
+        viewManager = GridLayoutManager(context, NUMBER_OF_COLUMNS)
 
         root.recyclerViewSearchResults.let {
             it.adapter = viewAdapter
