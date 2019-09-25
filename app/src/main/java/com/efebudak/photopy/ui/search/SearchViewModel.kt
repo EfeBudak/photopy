@@ -8,7 +8,8 @@ import com.efebudak.photopy.data.PhotoListResponse
 import com.efebudak.photopy.data.PhotosPage
 import com.efebudak.photopy.data.UiPhoto
 import com.efebudak.photopy.data.source.PhotosDataSource
-import kotlinx.coroutines.async
+import com.efebudak.photopy.utils.BaseCoroutineContextProvider
+import com.efebudak.photopy.utils.CoroutineContextProvider
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
@@ -19,7 +20,8 @@ private const val FIRST_PAGE_INDEX = 1
 
 class SearchViewModel(
     private val photosDataSource: PhotosDataSource,
-    private var stateHolder: SearchContract.StateHolder
+    private var stateHolder: SearchContract.StateHolder,
+    private var coroutineContextProvider: BaseCoroutineContextProvider = CoroutineContextProvider()
 ) :
     ViewModel(),
     SearchContract.ViewModel {
@@ -120,15 +122,10 @@ class SearchViewModel(
 
         stateHolder.atPage++
 
-        viewModelScope.launch {
-
-            val deferedPhotoListResponse = async {
-
-                photosDataSource.fetchPhotoList(stateHolder.searchedText, stateHolder.atPage)
-            }
+        viewModelScope.launch(coroutineContextProvider.main) {
 
             val photoListResponse = try {
-                deferedPhotoListResponse.await()
+                photosDataSource.fetchPhotoList(stateHolder.searchedText, stateHolder.atPage)
             } catch (error: HttpException) {
 
                 //Display error message
