@@ -35,6 +35,7 @@ class SearchViewModelTest {
     private lateinit var stateHolder: SearchContract.StateHolder
 
     private val observer: Observer<MutableList<UiPhoto>> = mock()
+    private val searchLoadingObserver: Observer<Boolean> = mock()
 
     lateinit var searchViewModel: SearchViewModel
 
@@ -46,6 +47,7 @@ class SearchViewModelTest {
         searchViewModel =
             SearchViewModel(photosDataSource, stateHolder, TestCoroutineContextProvider())
         (searchViewModel.uiPhotoList).observeForever(observer)
+        (searchViewModel.searchLoading).observeForever(searchLoadingObserver)
         Dispatchers.setMain(mainThreadSurrogate)
     }
 
@@ -75,24 +77,62 @@ class SearchViewModelTest {
             `when`(photosDataSource.fetchPhotoList(searchText, 1)).thenReturn(
                 fakeEmptyPhotoListResponse
             )
+
+            searchViewModel.searchClicked(searchText)
+            verify(stateHolder).fetchingSearch = true
+
+            val captor = argumentCaptor<Boolean>()
+            captor.run {
+                verify(searchLoadingObserver, times(2)).onChanged(capture())
+                assert(allValues[0] == true)
+                assert(allValues[1] == false)
+            }
+        }
+    }
+
+    @Test
+    fun searchClicked_searchedTextSet_CancelFetchingPhotoUrl() {
+
+        val searchText = "kitten"
+        runBlocking {
+
+            `when`(stateHolder.fetchingSearch).thenReturn(false)
+            `when`(stateHolder.searchedText).thenReturn(searchText)
+            `when`(stateHolder.atPage).thenReturn(1)
+            `when`(photosDataSource.fetchPhotoList(searchText, 1)).thenReturn(
+                fakeEmptyPhotoListResponse
+            )
+            searchViewModel.searchClicked(searchText)
+
+            verify(stateHolder).searchedText = searchText
+            verify(stateHolder).photoUrlJob?.cancel()
+        }
+    }
+
+    @Test
+    fun searchClicked_EmptyResult_UpdateEmptyList() {
+
+        val searchText = "kitten"
+        runBlocking {
+
+            `when`(stateHolder.fetchingSearch).thenReturn(false)
+            `when`(stateHolder.searchedText).thenReturn(searchText)
+            `when`(stateHolder.atPage).thenReturn(1)
+            `when`(photosDataSource.fetchPhotoList(searchText, 1)).thenReturn(
+                fakeEmptyPhotoListResponse
+            )
+
+            searchViewModel.searchClicked(searchText)
+
             launch(Dispatchers.Main) {
 
-                searchViewModel.searchClicked(searchText)
-
-                verify(stateHolder).fetchingSearch = true
-                verify(stateHolder).searchedText = searchText
-                verify(stateHolder).photoUrlJob?.cancel()
-                verify(stateHolder).fetchingPhotoUrl = false
-
                 val inOrderBeforeSuspend = inOrder(stateHolder)
-
                 inOrderBeforeSuspend.verify(stateHolder).biggestRequestedItemIndex = 0
                 inOrderBeforeSuspend.verify(stateHolder).atPage = 0
                 inOrderBeforeSuspend.verify(stateHolder).lastFetchedItemIndex = 0
                 inOrderBeforeSuspend.verify(stateHolder).atPage = 1
 
                 val inOrderAfterSuspend = inOrder(stateHolder)
-
                 inOrderAfterSuspend.verify(stateHolder).atPage = 1
                 inOrderAfterSuspend.verify(stateHolder).totalNumberOfPages = 1
                 inOrderAfterSuspend.verify(stateHolder).currentTotalPhotoNumber = 0
@@ -106,6 +146,35 @@ class SearchViewModelTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun lastVisibleItemPosition_updatesBiggestPositionItemIndex() {
+        `when`(stateHolder.biggestRequestedItemIndex).thenReturn(6)
+        searchViewModel.lastVisibleItemPosition(8)
+
+        verify(stateHolder).biggestRequestedItemIndex = 8
+    }
+
+    @Test
+    fun lastVisibleItemPosition_updatesBiggestPositionItemIndex_EvenDuringFetching() {
+
+        `when`(stateHolder.biggestRequestedItemIndex).thenReturn(6)
+        `when`(stateHolder.fetchingPhotoUrl).thenReturn(true)
+
+        searchViewModel.lastVisibleItemPosition(8)
+
+        verify(stateHolder).biggestRequestedItemIndex = 8
+    }
+
+    @Test
+    fun lastVisibleItemPosition_updatesFetchingFlag_WhenFalse() {
+
+        `when`(stateHolder.fetchingPhotoUrl).thenReturn(false)
+
+        searchViewModel.lastVisibleItemPosition(8)
+
+        verify(stateHolder).fetchingPhotoUrl = true
     }
 
 }
