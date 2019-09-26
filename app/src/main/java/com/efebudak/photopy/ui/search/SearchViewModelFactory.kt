@@ -1,12 +1,10 @@
-package com.efebudak.photopy
+package com.efebudak.photopy.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.efebudak.photopy.data.source.PhotosDataSource
-import com.efebudak.photopy.ui.search.SearchContract
-import com.efebudak.photopy.ui.search.SearchViewModel
 
-class PhotopyViewModelFactory(
+class SearchViewModelFactory(
     private val photosDataSource: PhotosDataSource,
     private val stateHolder: SearchContract.StateHolder
 ) : ViewModelProvider.Factory {

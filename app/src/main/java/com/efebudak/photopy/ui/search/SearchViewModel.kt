@@ -22,13 +22,12 @@ class SearchViewModel(
     private val photosDataSource: PhotosDataSource,
     private var stateHolder: SearchContract.StateHolder,
     private var coroutineContextProvider: BaseCoroutineContextProvider = CoroutineContextProvider()
-) :
-    ViewModel(),
+) : ViewModel(),
     SearchContract.ViewModel {
 
-    val uiPhotoList: LiveData<MutableList<UiPhoto>>
+    override val uiPhotoList: LiveData<MutableList<UiPhoto>>
         get() = _uiPhotoMutableList
-    val searchLoading: LiveData<Boolean>
+    override val searchLoading: LiveData<Boolean>
         get() = _searchLoading
 
     private val _uiPhotoMutableList: MutableLiveData<MutableList<UiPhoto>> = MutableLiveData()

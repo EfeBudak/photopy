@@ -3,14 +3,17 @@ package com.efebudak.photopy.di
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.efebudak.photopy.BuildConfig
-import com.efebudak.photopy.PhotopyViewModelFactory
 import com.efebudak.photopy.data.source.PhotosDataSource
 import com.efebudak.photopy.data.source.PhotosRepository
 import com.efebudak.photopy.data.source.remote.PhotosRemoteDataSource
 import com.efebudak.photopy.network.FlickrService
+import com.efebudak.photopy.ui.detail.DetailContract
+import com.efebudak.photopy.ui.detail.DetailViewModel
+import com.efebudak.photopy.ui.detail.DetailViewModelFactory
 import com.efebudak.photopy.ui.search.SearchContract
 import com.efebudak.photopy.ui.search.SearchStateHolder
 import com.efebudak.photopy.ui.search.SearchViewModel
+import com.efebudak.photopy.ui.search.SearchViewModelFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.core.qualifier.named
@@ -39,17 +42,25 @@ val appModule = module {
     single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
         PhotosRepository(get(named(REMOTE_DATA_SOURCE)))
     }
-    factory<SearchContract.StateHolder> { SearchStateHolder() }
 
-    factory { (fragment: Fragment) ->
+    factory<SearchContract.StateHolder> { SearchStateHolder() }
+    factory<SearchContract.ViewModel> { (fragment: Fragment) ->
         ViewModelProviders.of(
             fragment,
-            PhotopyViewModelFactory(
+            SearchViewModelFactory(
                 get(named(REPOSITORY_DATA_SOURCE)),
                 get()
             )
         )
             .get(SearchViewModel::class.java)
+    }
+
+    factory<DetailContract.ViewModel> { (fragment: Fragment) ->
+        ViewModelProviders.of(
+            fragment,
+            DetailViewModelFactory(get(named(REPOSITORY_DATA_SOURCE)))
+        )
+            .get(DetailViewModel::class.java)
     }
 
 }

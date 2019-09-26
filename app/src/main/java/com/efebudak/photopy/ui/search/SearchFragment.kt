@@ -22,7 +22,7 @@ private const val NUMBER_OF_COLUMNS = 2
 
 class SearchFragment : Fragment() {
 
-    private val viewModel: SearchViewModel by inject { parametersOf(this) }
+    private val viewModel: SearchContract.ViewModel by inject { parametersOf(this) }
 
     private lateinit var viewAdapter: SearchListAdapter
     private lateinit var viewManager: GridLayoutManager

@@ -11,7 +11,7 @@ import com.efebudak.photopy.R
 import com.efebudak.photopy.data.UiPhoto
 import com.squareup.picasso.Picasso
 
-class SearchListAdapter(private val photoClickCallback: (photoUrl: String) -> (Unit)) :
+class SearchListAdapter(private val photoClickCallback: (photoId: String) -> (Unit)) :
     ListAdapter<UiPhoto, SearchListAdapter.SearchViewHolder>(UiPhotoDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchViewHolder {
@@ -26,9 +26,9 @@ class SearchListAdapter(private val photoClickCallback: (photoUrl: String) -> (U
 
     class SearchViewHolder(root: View) : RecyclerView.ViewHolder(root) {
 
-        fun bindView(uiPhoto: UiPhoto, photoClickCallback: (photoUrl: String) -> (Unit)) {
+        fun bindView(uiPhoto: UiPhoto, photoClickCallback: (photoId: String) -> (Unit)) {
 
-            itemView.setOnClickListener { photoClickCallback(uiPhoto.photoUrl) }
+            itemView.setOnClickListener { photoClickCallback(uiPhoto.id) }
 
             val imageViewPhoto = itemView.findViewById<ImageView>(R.id.imageViewPhoto)
             val textViewTitle = itemView.findViewById<TextView>(R.id.textViewPhotoTitle)

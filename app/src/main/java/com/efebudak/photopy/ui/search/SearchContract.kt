@@ -1,5 +1,7 @@
 package com.efebudak.photopy.ui.search
 
+import androidx.lifecycle.LiveData
+import com.efebudak.photopy.data.UiPhoto
 import kotlinx.coroutines.Job
 
 interface SearchContract {
@@ -31,6 +33,8 @@ interface SearchContract {
     interface ViewModel {
         fun searchClicked(searchText: String)
         fun lastVisibleItemPosition(position: Int)
+        val uiPhotoList: LiveData<MutableList<UiPhoto>>
+        val searchLoading: LiveData<Boolean>
     }
 
 }

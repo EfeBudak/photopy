@@ -20,7 +20,7 @@
         android:label="DetailFragment"
         tools:layout="@layout/fragment_detail" >
         <argument
-            android:name="imageUrl"
+            android:name="photoId"
             app:argType="string"
             android:defaultValue='""' />
     </fragment>
