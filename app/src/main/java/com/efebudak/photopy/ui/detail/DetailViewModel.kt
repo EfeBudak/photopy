@@ -31,7 +31,7 @@ class DetailViewModel(private val photosDataSource: PhotosDataSource) :
             }
 
             val photoUrl = photoSizesResponse.photoSizes.photoSizeList
-                .firstOrNull { it.label == "Large" } ?: PhotoSize()
+                .firstOrNull { it.label == "Large" || it.label == "Original" } ?: PhotoSize()
 
             _largePhotoUrl.postValue(photoUrl)
         }

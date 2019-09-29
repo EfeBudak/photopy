@@ -30,12 +30,14 @@ class DetailFragment : Fragment() {
 
         viewModel.largePhotoUrl.observe(viewLifecycleOwner) {
 
-            Picasso.with(context)
-                .load(it.sourceUrl)
-                .placeholder(R.drawable.ic_photo_placeholder)
-                .resize(it.width, it.height)
-                .centerCrop()
-                .into(root.imageViewPhoto)
+            if (it.sourceUrl.isNotEmpty()) {
+                Picasso.with(context)
+                    .load(it.sourceUrl)
+                    .placeholder(R.drawable.ic_photo_placeholder)
+                    .resize(it.width, it.height)
+                    .centerCrop()
+                    .into(root.imageViewPhoto)
+            }
         }
 
         viewModel.created(photoId)
