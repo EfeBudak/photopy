@@ -11,31 +11,31 @@ import com.efebudak.photopy.data.source.PhotosDataSource
 import kotlinx.coroutines.launch
 
 class DetailViewModel(private val photosDataSource: PhotosDataSource) :
-    ViewModel(),
-    DetailContract.ViewModel {
+  ViewModel(),
+  DetailContract.ViewModel {
 
-    override val largePhotoUrl: LiveData<PhotoSize>
-        get() = _largePhotoUrl
+  override val largePhotoUrl: LiveData<PhotoSize>
+    get() = _largePhotoUrl
 
-    private val _largePhotoUrl: MutableLiveData<PhotoSize> = MutableLiveData()
+  private val _largePhotoUrl: MutableLiveData<PhotoSize> = MutableLiveData()
 
-    override fun created(photoId: String) {
+  override fun created(photoId: String) {
 
-        viewModelScope.launch {
+    viewModelScope.launch {
 
-            val photoSizesResponse = try {
-                photosDataSource.fetchPhotoSizes(photoId)
-            } catch (exception: Exception) {
-                //Send proper error message
-                PhotoSizesResponse(PhotoSizes(emptyList()))
-            }
+      val photoSizesResponse = try {
+        photosDataSource.fetchPhotoSizes(photoId)
+      } catch (exception: Exception) {
+        //Send proper error message
+        PhotoSizesResponse(PhotoSizes(emptyList()))
+      }
 
-            val photoUrl = photoSizesResponse.photoSizes.photoSizeList
-                .firstOrNull { it.label == "Large" || it.label == "Original" } ?: PhotoSize()
+      val photoUrl = photoSizesResponse.photoSizes.photoSizeList
+        .firstOrNull { it.label == "Large" || it.label == "Original" } ?: PhotoSize()
 
-            _largePhotoUrl.postValue(photoUrl)
-        }
-
+      _largePhotoUrl.postValue(photoUrl)
     }
+
+  }
 
 }

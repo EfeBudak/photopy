@@ -5,9 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import com.efebudak.photopy.data.source.PhotosDataSource
 
 class DetailViewModelFactory(private val photosDataSource: PhotosDataSource) :
-    ViewModelProvider.Factory {
+  ViewModelProvider.Factory {
 
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        return DetailViewModel(photosDataSource) as T
-    }
+  override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+    return DetailViewModel(photosDataSource) as T
+  }
 }

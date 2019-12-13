@@ -23,45 +23,45 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 val appModule = module {
 
-    single<Retrofit>(createdAtStart = true) {
-        val loggingIntercepter = HttpLoggingInterceptor()
-        loggingIntercepter.level = HttpLoggingInterceptor.Level.BODY
-        val okHttp = OkHttpClient.Builder().addInterceptor(loggingIntercepter).build()
-        Retrofit.Builder()
-            .baseUrl(BuildConfig.BASE_URL)
-            .client(okHttp)
-            .addConverterFactory(MoshiConverterFactory.create())
-            .build()
-    }
+  single<Retrofit>(createdAtStart = true) {
+    val loggingIntercepter = HttpLoggingInterceptor()
+    loggingIntercepter.level = HttpLoggingInterceptor.Level.BODY
+    val okHttp = OkHttpClient.Builder().addInterceptor(loggingIntercepter).build()
+    Retrofit.Builder()
+      .baseUrl(BuildConfig.BASE_URL)
+      .client(okHttp)
+      .addConverterFactory(MoshiConverterFactory.create())
+      .build()
+  }
 
-    single<FlickrService> {
-        (get() as Retrofit).create(FlickrService::class.java)
-    }
+  single<FlickrService> {
+    (get() as Retrofit).create(FlickrService::class.java)
+  }
 
-    single<PhotosDataSource>(named(REMOTE_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
-    single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
-        PhotosRepository(get(named(REMOTE_DATA_SOURCE)))
-    }
+  single<PhotosDataSource>(named(REMOTE_DATA_SOURCE)) { PhotosRemoteDataSource(get()) }
+  single<PhotosDataSource>(named(REPOSITORY_DATA_SOURCE)) {
+    PhotosRepository(get(named(REMOTE_DATA_SOURCE)))
+  }
 
-    factory<SearchContract.StateHolder> { SearchStateHolder() }
-    factory<SearchContract.ViewModel> { (fragment: Fragment) ->
-        ViewModelProviders.of(
-            fragment,
-            SearchViewModelFactory(
-                get(named(REPOSITORY_DATA_SOURCE)),
-                get()
-            )
-        )
-            .get(SearchViewModel::class.java)
-    }
+  factory<SearchContract.StateHolder> { SearchStateHolder() }
+  factory<SearchContract.ViewModel> { (fragment: Fragment) ->
+    ViewModelProviders.of(
+      fragment,
+      SearchViewModelFactory(
+        get(named(REPOSITORY_DATA_SOURCE)),
+        get()
+      )
+    )
+      .get(SearchViewModel::class.java)
+  }
 
-    factory<DetailContract.ViewModel> { (fragment: Fragment) ->
-        ViewModelProviders.of(
-            fragment,
-            DetailViewModelFactory(get(named(REPOSITORY_DATA_SOURCE)))
-        )
-            .get(DetailViewModel::class.java)
-    }
+  factory<DetailContract.ViewModel> { (fragment: Fragment) ->
+    ViewModelProviders.of(
+      fragment,
+      DetailViewModelFactory(get(named(REPOSITORY_DATA_SOURCE)))
+    )
+      .get(DetailViewModel::class.java)
+  }
 
 }
 

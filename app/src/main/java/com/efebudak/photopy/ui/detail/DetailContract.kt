@@ -5,8 +5,8 @@ import com.efebudak.photopy.data.PhotoSize
 
 interface DetailContract {
 
-    interface ViewModel {
-        fun created(photoId: String)
-        val largePhotoUrl: LiveData<PhotoSize>
-    }
+  interface ViewModel {
+    fun created(photoId: String)
+    val largePhotoUrl: LiveData<PhotoSize>
+  }
 }
